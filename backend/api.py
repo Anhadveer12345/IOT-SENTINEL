@@ -19,7 +19,11 @@ from database import (
 )
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[
+    "https://iotsentinal.netlify.app/login.html",
+    "http://localhost:8080",
+    "http://127.0.0.1:5500"
+])
 
 MODELS_DIR = Path('models')
 models_loaded = False
@@ -293,4 +297,6 @@ if __name__ == '__main__':
     load_models()
     print("\n[API] Starting on http://localhost:8080")
     print("[API] Press Ctrl+C to stop\n")
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    port = int(os.environ.get("PORT", 8080))
+
+    app.run(host='0.0.0.0', port=port, debug=False)
