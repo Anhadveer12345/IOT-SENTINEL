@@ -1,0 +1,33 @@
+{
+  "rf_accuracy": 100.0,
+  "cnn_accuracy": 100.0,
+  "lstm_accuracy": 100.0,
+  "threshold": 70,
+  "rf_features": [
+    "packet_size",
+    "inter_arrival_time",
+    "flow_duration",
+    "packets_per_sec",
+    "bytes_per_sec",
+    "tcp_flags",
+    "syn_count",
+    "ack_count",
+    "dst_port",
+    "protocol",
+    "signal_strength",
+    "snr",
+    "freq_drift",
+    "tx_power",
+    "channel_utilization"
+  ],
+  "lstm_features": [
+    "traffic_entropy",
+    "burst_count",
+    "idle_time",
+    "retransmissions",
+    "payload_entropy",
+    "packets_per_sec",
+    "bytes_per_sec",
+    "inter_arrival_time"
+  ]
+}
