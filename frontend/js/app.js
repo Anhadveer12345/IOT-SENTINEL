@@ -9,7 +9,6 @@ let currentPage = 'dashboard';
   }
   const user = getUser();
   if (user) {
-    // Show user name in nav
     const statusText = document.getElementById('statusText');
     if (statusText) statusText.textContent = user.name.toUpperCase();
   }
@@ -40,9 +39,7 @@ function showPage(page) {
 // ── Logout ────────────────────────────────────
 async function logout() {
   try {
-    await fetch(`${API_URL}/auth/logout`, {
-      method: 'POST', headers: authHeaders()
-    });
+    await fetch(`${API_URL}/auth/logout`, { method: 'POST', headers: authHeaders() });
   } catch (e) { }
   localStorage.removeItem('iot_token');
   localStorage.removeItem('iot_user');
@@ -78,13 +75,10 @@ async function loadRealDevices() {
       renderSensorTable(devices);
       updateStats();
       updateTrustCircle();
-      if (devices.length > 0) {
-        showToast(`Loaded ${devices.length} registered device${devices.length > 1 ? 's' : ''}`, 'info');
-      }
+      showToast(`Loaded ${devices.length} registered device${devices.length > 1 ? 's' : ''}`, 'info');
     } else {
-      // No devices yet — show empty state
       devices = [];
-      renderSensorGrid([]);
+      renderEmptySensorGrid();
       renderSensorTable([]);
     }
   } catch (e) { }
@@ -104,10 +98,8 @@ function closeConnectModal() {
 function generateConnectCode() {
   const id = document.getElementById('connectDeviceId').value.trim();
   const type = document.getElementById('connectDeviceType').value;
-
   if (!id) { showToast('Please enter a Device ID', 'fail'); return; }
 
-  // Register device in backend
   fetch(`${API_URL}/devices/register`, {
     method: 'POST',
     headers: authHeaders(),
@@ -118,8 +110,7 @@ function generateConnectCode() {
   }).catch(() => { });
 
   const apiKey = getApiKey();
-  const code =
-    `# IoT Sentinel — Device Agent
+  const code = `# IoT Sentinel — Device Agent
 # Requirements: pip install requests
 # Run: python sensor_agent.py
 
@@ -184,10 +175,9 @@ while True:
 }
 
 function copyConnectCode() {
-  const code = document.getElementById('connectCode').textContent;
-  navigator.clipboard.writeText(code).then(() => {
-    showToast('Script copied to clipboard', 'ok');
-  }).catch(() => showToast('Copy failed — select manually', 'fail'));
+  navigator.clipboard.writeText(document.getElementById('connectCode').textContent)
+    .then(() => showToast('Script copied to clipboard', 'ok'))
+    .catch(() => showToast('Copy failed — select manually', 'fail'));
 }
 
 // ── Analytics ─────────────────────────────────
@@ -250,7 +240,7 @@ async function checkBackend() {
     loadRealDevices();
   } else {
     bar.classList.add('error'); bar.classList.remove('connected');
-    msg.textContent = 'Backend offline · Start: cd backend && python api.py';
+    msg.textContent = 'Backend offline or waking up · Render free tier may take ~60s to start';
     const statusText = document.getElementById('statusText');
     if (statusText) statusText.textContent = 'OFFLINE';
   }
@@ -276,6 +266,7 @@ function initPlaceholders() {
 // ── Empty Sensor Grid State ───────────────────
 function renderEmptySensorGrid() {
   const grid = document.getElementById('sensorGrid');
+  if (!grid) return;
   grid.innerHTML = `
     <div style="grid-column:1/-1;text-align:center;padding:60px 20px">
       <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:12px">
