@@ -19,9 +19,9 @@ async function apiHealth() {
 
 async function apiAuthenticate(device) {
   const body = {
-    device_id:   device.id,
+    device_id: device.id,
     device_type: device.type,
-    features:    device.features,
+    features: device.features,
     time_series: device.timeSeries
   };
   try {
@@ -33,7 +33,7 @@ async function apiAuthenticate(device) {
     });
     if (!res.ok) throw new Error('API error');
     return await res.json();
-  } catch(e) {
+  } catch (e) {
     // Fallback to simulation if backend offline
     return simulateFallback(device);
   }
@@ -43,28 +43,28 @@ async function apiAuthenticate(device) {
 function simulateFallback(device) {
   const isAttack = device.attackType !== 'Normal';
   const base = isAttack ? rand(20, 65) : rand(65, 95);
-  const rf  = clamp(base + (Math.random()-0.5)*12, 5, 99);
-  const cnn = clamp(base + (Math.random()-0.5)*10, 5, 99);
+  const rf = clamp(base + (Math.random() - 0.5) * 12, 5, 99);
+  const cnn = clamp(base + (Math.random() - 0.5) * 10, 5, 99);
   const mean = (rf + cnn) / 2;
-  const lstm = clamp(base + (Math.random()-0.5)*14, 5, 99);
+  const lstm = clamp(base + (Math.random() - 0.5) * 14, 5, 99);
   return {
-    device_id:  device.id,
+    device_id: device.id,
     device_type: device.type,
-    rf_score:   parseFloat(rf.toFixed(1)),
-    cnn_score:  parseFloat(cnn.toFixed(1)),
+    rf_score: parseFloat(rf.toFixed(1)),
+    cnn_score: parseFloat(cnn.toFixed(1)),
     lstm_score: parseFloat(lstm.toFixed(1)),
     mean_score: parseFloat(mean.toFixed(1)),
-    trusted:    mean >= THRESHOLD,
+    trusted: mean >= THRESHOLD,
     behavioral: {
       anomaly_probability: isAttack ? rand(0.4, 0.9) : rand(0, 0.15),
-      behavioral_drift: isAttack ? `${rand(20,60).toFixed(1)}%` : `${rand(0,8).toFixed(1)}%`,
+      behavioral_drift: isAttack ? `${rand(20, 60).toFixed(1)}%` : `${rand(0, 8).toFixed(1)}%`,
       traffic_pattern: isAttack ? 'Anomalous' : 'Normal'
     }
   };
 }
 
-function clamp(v, mn, mx) { return Math.min(Math.max(v,mn),mx); }
-function rand(a,b) { return Math.random()*(b-a)+a; }
+function clamp(v, mn, mx) { return Math.min(Math.max(v, mn), mx); }
+function rand(a, b) { return Math.random() * (b - a) + a; }
 
 // ── Authentication Pipeline ───────────────────
 
@@ -127,24 +127,24 @@ async function authenticateDevice(device) {
   // Call API
   const result = await apiAuthenticate(device);
 
-  device.rfScore   = result.rf_score;
-  device.cnnScore  = result.cnn_score;
+  device.rfScore = result.rf_score;
+  device.cnnScore = result.cnn_score;
   device.lstmScore = result.lstm_score;
   device.meanScore = result.mean_score;
-  device.status    = result.trusted ? 'trusted' : 'flagged';
-  device.lastAuth  = new Date().toLocaleTimeString();
+  device.status = result.trusted ? 'trusted' : 'flagged';
+  device.lastAuth = new Date().toLocaleTimeString();
   device.behavioral = result.behavioral;
 
   // Update score bars
-  setBar('rfFill',   'rfPct',   device.rfScore, false);
-  setBar('cnnFill',  'cnnPct',  device.cnnScore, false);
+  setBar('rfFill', 'rfPct', device.rfScore, false);
+  setBar('cnnFill', 'cnnPct', device.cnnScore, false);
   setBar('meanFill', 'meanPct', device.meanScore, device.meanScore < THRESHOLD);
 
   // LSTM chart + metrics
   const series = generateLSTMSeries(device);
   drawLSTMChart(document.getElementById('lstmCanvas'), series, !result.trusted);
   setText('lmPattern', result.behavioral.traffic_pattern || '--');
-  setText('lmDrift',   result.behavioral.behavioral_drift || '--');
+  setText('lmDrift', result.behavioral.behavioral_drift || '--');
   setText('lmAnomaly', result.behavioral.anomaly_probability?.toFixed(3) || '--');
 
   updateSensorCard(device);
@@ -160,7 +160,7 @@ async function authenticateDevice(device) {
 
 function setBar(fillId, pctId, value, isLow) {
   const fill = document.getElementById(fillId);
-  const pct  = document.getElementById(pctId);
+  const pct = document.getElementById(pctId);
   if (fill) {
     fill.style.width = `${value}%`;
     if (isLow) fill.classList.add('low'); else fill.classList.remove('low');
@@ -187,7 +187,7 @@ function updateSensorCard(device) {
   const ic = card.querySelector('.sc-icon');
   if (ic) {
     ic.textContent = device.status === 'trusted' ? '✓' : device.status === 'flagged' ? '✕' : device.status === 'scanning' ? '⟳' : '○';
-    ic.className   = `sc-icon ${device.status}`;
+    ic.className = `sc-icon ${device.status}`;
   }
 }
 
@@ -220,7 +220,7 @@ function renderSensorTable(devs) {
       <td class="${sc(d.cnnScore)}">${fmt(d.cnnScore)}</td>
       <td class="${sc(d.lstmScore)}">${fmt(d.lstmScore)}</td>
       <td class="${sc(d.meanScore)}">${fmt(d.meanScore)}</td>
-      <td class="${d.status==='trusted'?'td-ok':d.status==='flagged'?'td-bad':''}">${d.status.toUpperCase()}</td>
+      <td class="${d.status === 'trusted' ? 'td-ok' : d.status === 'flagged' ? 'td-bad' : ''}">${d.status.toUpperCase()}</td>
       <td>${d.lastAuth || '--'}</td>
     </tr>
   `).join('');
@@ -239,15 +239,15 @@ function fmt(score) {
 }
 
 function updateStats() {
-  const done    = devices.filter(d => d.meanScore != null);
+  const done = devices.filter(d => d.meanScore != null);
   const trusted = devices.filter(d => d.status === 'trusted').length;
   const flagged = devices.filter(d => d.status === 'flagged').length;
-  setText('statTotal',   devices.length);
+  setText('statTotal', devices.length);
   setText('statTrusted', trusted);
   setText('statFlagged', flagged);
   if (modelMeta.rf_accuracy) {
-    setText('statRF',   `${modelMeta.rf_accuracy}%`);
-    setText('statCNN',  `${modelMeta.cnn_accuracy}%`);
+    setText('statRF', `${modelMeta.rf_accuracy}%`);
+    setText('statCNN', `${modelMeta.cnn_accuracy}%`);
     setText('statLSTM', `${modelMeta.lstm_accuracy}%`);
   }
 }
@@ -255,15 +255,20 @@ function updateStats() {
 function updateTrustCircle() {
   const done = devices.filter(d => d.meanScore != null);
   if (!done.length) return;
+
+  // Average of ALL authenticated devices
   const avg = done.reduce((s, d) => s + d.meanScore, 0) / done.length;
-  const circumference = 427; // 2*π*68
-  const offset = circumference - (avg / 100) * circumference;
+  const circumference = 427.26;
+  const offset = circumference * (1 - avg / 100);
 
   const arc = document.getElementById('trustArc');
   if (arc) {
+    arc.style.strokeDasharray = circumference;
     arc.style.strokeDashoffset = offset;
     arc.style.stroke = avg >= THRESHOLD ? '#4caf50' : '#e53935';
   }
+
+  // Show average score in circle — matches what circle displays
   setText('trustVal', `${avg.toFixed(0)}%`);
 
   const verdict = document.getElementById('trustVerdict');
@@ -314,8 +319,8 @@ function clearAlerts() {
 
 function showFlagModal(device) {
   setText('modalDevice', `${device.id} — ${device.type}`);
-  setText('modalScore',  `${device.meanScore.toFixed(1)}%`);
-  setText('modalDesc',   `Score ${device.meanScore.toFixed(1)}% below threshold (${THRESHOLD}%). Attack type: ${device.attackType}.`);
+  setText('modalScore', `${device.meanScore.toFixed(1)}%`);
+  setText('modalDesc', `Score ${device.meanScore.toFixed(1)}% below threshold (${THRESHOLD}%). Attack type: ${device.attackType}.`);
   document.getElementById('alertModal').classList.remove('hidden');
 }
 
@@ -335,12 +340,12 @@ function selectDevice(id) {
   const device = devices.find(d => d.id === id);
   if (!device || !device.rfScore) return;
   drawSpectrogram(document.getElementById('spectrogramCanvas'), device);
-  setBar('rfFill',   'rfPct',   device.rfScore, false);
-  setBar('cnnFill',  'cnnPct',  device.cnnScore, false);
+  setBar('rfFill', 'rfPct', device.rfScore, false);
+  setBar('cnnFill', 'cnnPct', device.cnnScore, false);
   setBar('meanFill', 'meanPct', device.meanScore, device.meanScore < THRESHOLD);
   const series = generateLSTMSeries(device);
   drawLSTMChart(document.getElementById('lstmCanvas'), series, device.status === 'flagged');
   setText('lmPattern', device.behavioral?.traffic_pattern || '--');
-  setText('lmDrift',   device.behavioral?.behavioral_drift || '--');
+  setText('lmDrift', device.behavioral?.behavioral_drift || '--');
   setText('lmAnomaly', device.behavioral?.anomaly_probability?.toFixed(3) || '--');
 }

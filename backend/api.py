@@ -2,6 +2,7 @@
 api.py — IoT Sentinel Flask Backend with User Auth
 Run: python api.py
 """
+
 import os
 import json
 import time
@@ -19,8 +20,21 @@ from database import (
 
 app = Flask(__name__)
 
-# ── CORS — allow all origins (covers Netlify, localhost, any frontend) ──
-CORS(app, resources={r"/*": {"origins": "*"}})
+# ── CORS — allow ALL origins (required for Render + Netlify) ──
+CORS(app, resources={r"/*": {"origins": "*"}},
+     allow_headers=["Content-Type", "Authorization", "X-API-Key"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers',
+                         'Content-Type,Authorization,X-API-Key')
+    response.headers.add('Access-Control-Allow-Methods',
+                         'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 
 MODELS_DIR = Path('models')
 models_loaded = False
@@ -37,7 +51,6 @@ def load_models():
     global scaler_rf, scaler_cnn, scaler_lstm
     global rf_features, cnn_features, lstm_features
     global meta, models_loaded
-
     if not MODELS_DIR.exists():
         print("[API] ERROR: models/ not found. Run train_models.py first!")
         return False
@@ -46,18 +59,14 @@ def load_models():
         rf_model = joblib.load(MODELS_DIR / 'rf_model.pkl')
         scaler_rf = joblib.load(MODELS_DIR / 'scaler_rf.pkl')
         rf_features = joblib.load(MODELS_DIR / 'rf_features.pkl')
-
         cnn_model = joblib.load(MODELS_DIR / 'cnn_model.pkl')
         scaler_cnn = joblib.load(MODELS_DIR / 'scaler_cnn.pkl')
         cnn_features = joblib.load(MODELS_DIR / 'cnn_features.pkl')
-
         lstm_model = joblib.load(MODELS_DIR / 'lstm_model.pkl')
         scaler_lstm = joblib.load(MODELS_DIR / 'scaler_lstm.pkl')
         lstm_features = joblib.load(MODELS_DIR / 'lstm_features.pkl')
-
         with open(MODELS_DIR / 'meta.json') as f:
             meta = json.load(f)
-
         models_loaded = True
         print("[API] All models loaded.")
         return True
@@ -69,33 +78,25 @@ def load_models():
 
 
 def get_current_user():
-    """Get user from Bearer token in Authorization header."""
     auth = request.headers.get('Authorization', '')
     if auth.startswith('Bearer '):
         token = auth[7:]
         return get_user_by_token(token)
     return None
 
-
-def require_auth():
-    user = get_current_user()
-    if not user:
-        return None, jsonify({'error': 'Unauthorized. Please login.'}), 401
-    return user, None, None
-
 # ── ML Helpers ────────────────────────────────
 
 
 def run_rf(features_dict):
     row = np.array([features_dict.get(f, 0.0)
-                    for f in rf_features]).reshape(1, -1)
+                   for f in rf_features]).reshape(1, -1)
     prob = rf_model.predict_proba(scaler_rf.transform(row))[0]
     return round(float(prob[0]) * 100, 2)
 
 
 def run_cnn(features_dict):
     row = np.array([features_dict.get(f, 0.0)
-                    for f in cnn_features]).reshape(1, -1)
+                   for f in cnn_features]).reshape(1, -1)
     prob = cnn_model.predict_proba(scaler_cnn.transform(row))[0]
     return round(float(prob[0]) * 100, 2)
 
@@ -118,7 +119,7 @@ def run_lstm(time_series):
 @app.route('/auth/signup', methods=['POST', 'OPTIONS'])
 def signup():
     if request.method == 'OPTIONS':
-        return _cors_preflight()
+        return jsonify({}), 200
     data = request.get_json()
     email = data.get('email', '').strip()
     name = data.get('name', '').strip()
@@ -141,7 +142,7 @@ def signup():
 @app.route('/auth/login', methods=['POST', 'OPTIONS'])
 def login():
     if request.method == 'OPTIONS':
-        return _cors_preflight()
+        return jsonify({}), 200
     data = request.get_json()
     email = data.get('email', '')
     password = data.get('password', '')
@@ -159,7 +160,7 @@ def login():
 @app.route('/auth/logout', methods=['POST', 'OPTIONS'])
 def logout():
     if request.method == 'OPTIONS':
-        return _cors_preflight()
+        return jsonify({}), 200
     auth = request.headers.get('Authorization', '')
     if auth.startswith('Bearer '):
         delete_session(auth[7:])
@@ -186,14 +187,13 @@ def health():
 @app.route('/authenticate', methods=['POST', 'OPTIONS'])
 def authenticate():
     if request.method == 'OPTIONS':
-        return _cors_preflight()
+        return jsonify({}), 200
     if not models_loaded:
         return jsonify({'error': 'Models not loaded'}), 503
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No JSON body'}), 400
 
-    # Support both token auth and api_key auth (for agents)
     user = get_current_user()
     if not user:
         api_key = data.get('api_key') or request.headers.get('X-API-Key')
@@ -249,7 +249,7 @@ def devices():
 @app.route('/devices/register', methods=['POST', 'OPTIONS'])
 def register_dev():
     if request.method == 'OPTIONS':
-        return _cors_preflight()
+        return jsonify({}), 200
     user = get_current_user()
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -268,8 +268,10 @@ def get_alert_list():
     return jsonify({'alerts': get_alerts(user['id'])})
 
 
-@app.route('/alerts/<int:alert_id>/dismiss', methods=['POST'])
+@app.route('/alerts/<int:alert_id>/dismiss', methods=['POST', 'OPTIONS'])
 def dismiss(alert_id):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     user = get_current_user()
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -298,16 +300,6 @@ def history():
 def model_info():
     return jsonify(meta)
 
-# ── CORS Preflight Helper ─────────────────────
-
-
-def _cors_preflight():
-    response = jsonify({'status': 'ok'})
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-API-Key'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    return response, 200
-
 
 # ── Main ──────────────────────────────────────
 if __name__ == '__main__':
@@ -316,7 +308,7 @@ if __name__ == '__main__':
     print("="*60)
     init_db()
     load_models()
-    print("\n[API] Starting on http://localhost:8080")
+    port = int(os.environ.get('PORT', 8080))
+    print(f"\n[API] Starting on http://0.0.0.0:{port}")
     print("[API] Press Ctrl+C to stop\n")
-    port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port, debug=False)

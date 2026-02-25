@@ -190,7 +190,7 @@ body {
 .trust-circle .progress {
   fill: none; stroke: var(--white); stroke-width: 8;
   stroke-linecap: butt;
-  stroke-dasharray: 502; stroke-dashoffset: 502;
+  stroke-dasharray: 427; stroke-dashoffset: 427;
   transition: stroke-dashoffset 1s ease, stroke 0.4s;
 }
 .trust-circle .score-text {
