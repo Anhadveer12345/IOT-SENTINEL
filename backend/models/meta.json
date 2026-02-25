@@ -1,7 +1,10 @@
 {
-  "rf_accuracy": 100.0,
-  "cnn_accuracy": 100.0,
-  "lstm_accuracy": 100.0,
+  "rf_accuracy": 92.7,
+  "cnn_accuracy": 92.6,
+  "lstm_accuracy": 92.7,
+  "rf_f1": 0.9269,
+  "cnn_f1": 0.9259,
+  "lstm_f1": 0.9269,
   "threshold": 70,
   "rf_features": [
     "packet_size",
@@ -29,5 +32,6 @@
     "packets_per_sec",
     "bytes_per_sec",
     "inter_arrival_time"
-  ]
+  ],
+  "backend": "sklearn"
 }
